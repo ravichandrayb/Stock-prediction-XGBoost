@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set(color_codes=True)
 from pandas_datareader import data as pdr
-import fix_yahoo_finance
+from Prepare_data import Prepare_data
 
 class Main(object):
 
@@ -25,7 +25,7 @@ class Main(object):
 	
 	def prepare_X_y(self, data):
 		X = data.values
-		ind = list(data.columns).index('Open')
+		ind = list(data.columns).index('Close')
 		y = []
 		for i in range(X.shape[0]-1):
 			if (X[i+1,ind]-X[i,ind])>0:
@@ -37,7 +37,7 @@ class Main(object):
 		return X,y
 	
 	def split_train_test(self,X,y):
-		split_ratio=0.9
+		split_ratio=0.6
 		train_size = int(round(split_ratio * X.shape[0]))
 		X_train = X[:train_size]
 		y_train = y[:train_size]
@@ -63,10 +63,19 @@ class Main(object):
 		print(train_sampled['target'].value_counts())
 		train_sampled['target'].value_counts().plot(kind='bar', title='Count (target)')
 		plt.show()
-	return train_sampled
+		return train_sampled
 	
 	def train_model(self, X_train, y_train):
-		model = xgb.XGBClassifier()
+		model = xgb.XGBClassifier(objective ='reg:squarederror',
+                   seed=100,
+                   n_estimators=11,
+                   max_depth=9,
+                   learning_rate=0.2,
+                   min_child_weight=14,
+                   subsample=1,
+                   colsample_bytree=1,
+                   colsample_bylevel=1,
+                   gamma=0)
 		model.fit(X_train, y_train)
 		return model
 	
@@ -74,13 +83,17 @@ class Main(object):
 		y_pred = model.predict(X_test)
 		y_pred = [round(value) for value in y_pred]
 		accuracy = accuracy_score(y_test, y_pred)
+		Test = pd.DataFrame(y_test)
+		pred = pd.DataFrame(y_pred)
+		print(y_test , y_pred)
+
 		print("Accuracy: %.2f%%" % (accuracy * 100.0))
 	
 	def plot_feature_imp(self, data, model):
 		imp_score = pd.DataFrame(model.feature_importances_, columns=['Importance Score'])
 		features = pd.DataFrame(data.columns, columns=['Features'])
 		feature_imp = pd.concat([features,imp_score], axis=1)
-		feature_imp = feature_imp.sort_index(by='Importance Score', ascending=False)
+		feature_imp = feature_imp.sort_values(by='Importance Score', ascending=False)
 		sns.barplot(x=feature_imp['Importance Score'], y=feature_imp['Features'])
 		plt.show()
 		
